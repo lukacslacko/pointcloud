@@ -65,7 +65,7 @@
     //   vec2 rnd(float t, float freq) {
     //     return vec2(sin((1000.+t) * freq), cos((1000.+t) * freq)) * sin((1000.+t) * freq * .713);
     //   }
-      
+
       void main() {
         // float wave = sin(a_position.x * 10.0 + u_time) * 0.05 + cos(a_position.y * 10.0 + u_time) * 0.05;
         // vec2 pos = a_position + wave;
@@ -81,10 +81,14 @@
         //   r[i] = rnd(u_time, freqs[i]);
         // }
 
-        vec2 pos = div(
-            u_coeffs[0] + mul(u_coeffs[1], p) + mul(u_coeffs[2], q) + mul(u_coeffs[3], mul(p, q)) + mul(u_coeffs[4], mul(p, p)) + mul(u_coeffs[5], mul(q, q)),
+        vec2 flat_pos = div(
+            u_coeffs[0] + mul(u_coeffs[1], p) + mul(u_coeffs[2], q) + mul(u_coeffs[3], mul(p, q)) + mul(u_coeffs[4], mul(p,
+            p)) + mul(u_coeffs[5], mul(q, q)),
             u_coeffs[6] + mul(u_coeffs[7], p) + mul(u_coeffs[8], q) + mul(u_coeffs[9], mul(p, q)) + mul(u_coeffs[10], mul(p, p)) + mul(u_coeffs[11], mul(q, q))
-        ) / 2.;
+        );
+        float r = length(flat_pos);
+        r = r*r;
+        vec2 pos = sqrt(3.)*flat_pos * r / (1. + r*r);
         gl_Position = u_projection * vec4(pos, 0.0, 1.0);
         gl_PointSize = 2.0;
         v_columnIndex = (a_position.x + 1.0) / 2.0;
@@ -104,7 +108,7 @@
       void main() {
         float hue = v_columnIndex;
         vec3 color = hsv2rgb(vec3(hue, 1.0, 1.0));
-        outColor = vec4(color, .05);
+        outColor = vec4(color, .02);
       }`;
 
       function compileShader(gl, type, source) {
@@ -142,13 +146,32 @@
         const u_coeffs = gl.getUniformLocation(program, 'u_coeffs');
 
       const gridSize = 2000;
-      const positions = [];     
+      const positions = [];
       for (let xi = 0; xi < gridSize; xi++) {
-        let x = -1 + (2 * xi / gridSize);
+        let x = -1 + (2 * (xi + 0*Math.sin(xi*0.1)) / gridSize);
         for (let yi = 0; yi < gridSize; yi++) {
-        let y = -1 + (2 * yi / gridSize);
-          positions.push(x, y);
+        let y = -1 + (2 * (yi + 0*Math.sin(yi*0.1)) / gridSize);
+          if (true) {
+            if (false) {
+              x=x+0.1*Math.sin(100*x);
+              y=y+0.1*Math.sin(100*y);
+            }
+            positions.push(x, y);
+          }
+          else {
+            let x = Math.random()*2-1;
+            let y = Math.random()*2-1;
+            x=x+0.08*Math.sin(20*x);
+            y=y+0.08*Math.sin(20*y);
+            positions.push(x,y);
+          }
         }
+      }
+      if (false)
+      for (let i = 2; i < positions.length; i+=2) {
+        const j = 2*Math.floor(Math.random() * i/2);
+        [positions[i], positions[j]] = [positions[j], positions[i]];
+        [positions[i+1], positions[j+1]] = [positions[j+1], positions[i+1]];
       }
 
       const positionBuffer = gl.createBuffer();
@@ -194,7 +217,7 @@
           this.freq = freq;
           this.start = Math.random() * 2 - 1;
           this.end = Math.random() * 2 - 1;
-          this.phase = 0;
+          this.phase = 0.5;
           this.last_t = 0;
         }
 
@@ -213,7 +236,7 @@
 
         const theFloats = [];
         for (let i = 0; i < 24; i++) {
-            theFloats.push(new RndFloat(0.005 + Math.random() * 0.003));
+            theFloats.push(new RndFloat(0.02 + Math.random() * 0.01));
         }
 
       function render(time) {
@@ -227,11 +250,11 @@
 
         gl.useProgram(program);
         gl.bindVertexArray(vao);
-        gl.uniform1f(u_time, -17 + time / 20);
+        gl.uniform1f(u_time, time);
         gl.uniformMatrix4fv(u_projection, false, projection);
         gl.uniform2fv(u_coeffs, theFloats.map(sf => [sf.value(time)]));
         // gl.uniform2fv(
-        //     u_coeffs, 
+        //     u_coeffs,
         //     [0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0,
         //         1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         //     ]);
